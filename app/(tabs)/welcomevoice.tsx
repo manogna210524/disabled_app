@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av'; // For microphone permissions
 import * as Contacts from 'expo-contacts';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
-import * as Permissions from 'expo-permissions';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -20,7 +20,7 @@ export default function WelcomeVoiceScreen() {
     } else if (type === 'contacts') {
       await Contacts.requestPermissionsAsync();
     } else if (type === 'microphone') {
-      await Permissions.askAsync(Permissions.AUDIO_RECORDING);
+      await Audio.requestPermissionsAsync();
     } else if (type === 'notifications') {
       await Notifications.requestPermissionsAsync();
     }
@@ -124,4 +124,3 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 });
-
