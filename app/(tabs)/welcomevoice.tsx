@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av'; // For microphone permissions
+import { Audio } from 'expo-av';
 import * as Contacts from 'expo-contacts';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
@@ -33,7 +33,7 @@ export default function WelcomeVoiceScreen() {
         setPermStep(permStep + 1);
       } else {
         setPermStep(null);
-        router.push('/listening'); // Go to Listening screen
+        router.push('/listening');
       }
     }
   };
@@ -53,9 +53,9 @@ export default function WelcomeVoiceScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome!</Text>
       <View style={styles.micCircle}>
-        <Ionicons name="mic" size={64} color="#0a1663" />
+        <Ionicons name="mic" size={80} color="#fff" />
       </View>
-      <Text style={styles.subtitle}>How can I assist you today?</Text>
+      <Text style={styles.subtitle}>How can I assist you{`\n`}today?</Text>
       <TouchableOpacity
         style={styles.button}
         onPress={() => setPermStep(0)}
@@ -88,39 +88,42 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#0a1663',
-    marginBottom: 36,
+    marginBottom: 40,
     fontFamily: 'serif',
+    textAlign: 'center',
   },
   micCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#fff',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#0a1663',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
-    borderWidth: 2,
-    borderColor: '#0a1663',
+    marginBottom: 36,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#0a1663',
     marginBottom: 60,
     textAlign: 'center',
+    fontFamily: 'serif',
+    fontWeight: '500',
   },
   button: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#0a1663',
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 48,
     alignItems: 'center',
     marginTop: 16,
+    backgroundColor: '#f4f6fa',
   },
   buttonText: {
     color: '#0a1663',
     fontSize: 18,
     fontWeight: 'bold',
     letterSpacing: 1,
+    fontFamily: 'serif',
   },
 });

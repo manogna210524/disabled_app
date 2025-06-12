@@ -1,62 +1,79 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../../lib/supabase';
 
 export default function LoginScreen() {
-  const [mobile, setMobile] = useState('');
-  const [otp, setOtp] = useState('');
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      Alert.alert('Login Failed', error.message);
+    } else {
+      router.replace('/welcomevoice');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) {
+      Alert.alert('Google Login Failed', error.message);
+    } else {
+      router.replace('/welcomevoice');
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome!</Text>
-
-      {/* Mobile Number Input */}
+      <Text style={styles.title}>Welcome Back!</Text>
       <TextInput
         style={styles.input}
-        placeholder="Mobile No."
+        placeholder="Email"
         placeholderTextColor="#0a1663"
-        keyboardType="phone-pad"
-        value={mobile}
-        onChangeText={setMobile}
-        maxLength={10}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        value={email}
+        onChangeText={setEmail}
       />
-
-      {/* Get OTP Button */}
-      <TouchableOpacity style={styles.button} onPress={() => {/* handle OTP send */}}>
-        <Text style={styles.buttonText}>Get OTP</Text>
-      </TouchableOpacity>
-
-      {/* OTP Input */}
       <TextInput
         style={styles.input}
-        placeholder="OTP"
+        placeholder="Password"
         placeholderTextColor="#0a1663"
-        keyboardType="number-pad"
-        value={otp}
-        onChangeText={setOtp}
-        maxLength={6}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
       />
-
-      {/* Verify OTP Button */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push('/welcomevoice')}
-      >
-        <Text style={styles.buttonText}>Verify OTP</Text>
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
       </TouchableOpacity>
-
-      {/* Sign Up Link */}
+      <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
+        <MaterialIcons name="google" size={20} color="#0a1663" />
+        <Text style={styles.googleButtonText}>Continue with Google</Text>
+      </TouchableOpacity>
       <View style={styles.linkRow}>
         <Text style={styles.linkText}>Don't have an account? </Text>
         <TouchableOpacity onPress={() => router.push('/register')}>
-          <Text style={[styles.linkText, styles.linkBold]}>Sign up.</Text>
+          <Text style={[styles.linkText, styles.linkBold]}>Sign up</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+
+
+
 
 const styles = StyleSheet.create({
   container: {

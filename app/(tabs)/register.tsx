@@ -1,66 +1,65 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../../lib/supabase';
 
 export default function RegisterScreen() {
-  const [fullname, setFullname] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [otp, setOtp] = useState('');
   const router = useRouter();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } }
+    });
+    setLoading(false);
+    if (error) {
+      Alert.alert('Registration Failed', error.message);
+    } else {
+      Alert.alert('Success', 'Check your email for confirmation!');
+      router.replace('/welcomevoice');
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create an Account</Text>
-
-      {/* Fullname Input */}
+      <Text style={styles.title}>Create Account</Text>
       <TextInput
         style={styles.input}
-        placeholder="Fullname"
+        placeholder="Full Name"
         placeholderTextColor="#0a1663"
-        value={fullname}
-        onChangeText={setFullname}
+        value={name}
+        onChangeText={setName}
       />
-
-      {/* Mobile Number Input */}
       <TextInput
         style={styles.input}
-        placeholder="Mobile No."
+        placeholder="Email"
         placeholderTextColor="#0a1663"
-        keyboardType="phone-pad"
-        value={mobile}
-        onChangeText={setMobile}
-        maxLength={10}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        value={email}
+        onChangeText={setEmail}
       />
-
-      {/* Get OTP Button */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => {/* handle OTP send */}}
-      >
-        <Text style={styles.buttonText}>Get OTP</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        placeholderTextColor="#0a1663"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create Account</Text>}
       </TouchableOpacity>
-
-      {/* OTP Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="OTP"
-        placeholderTextColor="#0a1663"
-        keyboardType="number-pad"
-        value={otp}
-        onChangeText={setOtp}
-        maxLength={6}
-      />
-
-      {/* Verify and Register Button */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push('/welcomevoice')}
-      >
-        <Text style={styles.buttonText}>Verify and Register</Text>
-      </TouchableOpacity>
-
-      {/* Login Link */}
       <View style={styles.linkRow}>
         <Text style={styles.linkText}>Already have an account? </Text>
         <TouchableOpacity onPress={() => router.push('/login')}>
@@ -70,6 +69,9 @@ export default function RegisterScreen() {
     </View>
   );
 }
+
+// Use your existing styles
+
 
 const styles = StyleSheet.create({
   container: {
