@@ -17,5 +17,14 @@
   },
   "submit": {
     "production": {}
+  },
+  "build": {
+    "development": {
+      "android": {
+        "gradleCommand": ":app:assembleDebug --stacktrace --info"
+      }
+    }
   }
 }
+
+
