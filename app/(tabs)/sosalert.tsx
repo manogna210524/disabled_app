@@ -1,7 +1,13 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Contacts from 'expo-contacts';
+import * as Linking from 'expo-linking';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import * as SMS from 'expo-sms';
+import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../../lib/supabase';
 
 export default function SOSAlertScreen() {
   const router = useRouter();
@@ -9,39 +15,190 @@ export default function SOSAlertScreen() {
   const [message, setMessage] = useState('I need help. Please reach me as soon as possible.');
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [contacts, setContacts] = useState([
-    { id: '1', name: 'Alice Smith', number: '988760821' },
-    { id: '2', name: 'Nearby hospital', number: '108' },
-  ]);
+  // All phone contacts
+  const [phoneContacts, setPhoneContacts] = useState([]);
+  // Emergency contacts (persistent, user-specific)
+  const [emergencyContacts, setEmergencyContacts] = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+  const [userId, setUserId] = useState(null);
 
-  const handleSendSOS = () => {
+  // Permission check helper
+  const checkPermission = async (type: string, friendlyName: string) => {
+    const status = await AsyncStorage.getItem(`perm_${type}`);
+    if (status !== 'granted') {
+      Alert.alert(
+        `${friendlyName} Permission Required`,
+        `Please enable ${friendlyName.toLowerCase()} access in settings.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() }
+        ]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // On mount, get the current user ID
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+    })();
+  }, []);
+
+  // Load emergency contacts from AsyncStorage when userId changes
+  useEffect(() => {
+    if (!userId) return;
+    const loadContacts = async () => {
+      const saved = await AsyncStorage.getItem(`emergencyContacts_${userId}`);
+      if (saved) setEmergencyContacts(JSON.parse(saved));
+      else setEmergencyContacts([]);
+    };
+    loadContacts();
+  }, [userId]);
+
+  // Save emergency contacts to AsyncStorage whenever they change
+  useEffect(() => {
+    if (!userId) return;
+    AsyncStorage.setItem(`emergencyContacts_${userId}`, JSON.stringify(emergencyContacts));
+  }, [emergencyContacts, userId]);
+
+  // Fetch device contacts on mount
+  useEffect(() => {
+    (async () => {
+      setLoadingContacts(true);
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.PhoneNumbers],
+        });
+        setPhoneContacts(data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0));
+      } else {
+        Alert.alert('Permission Denied', 'Cannot access contacts without permission.');
+      }
+      setLoadingContacts(false);
+    })();
+  }, []);
+
+  // Add a contact from device contacts to emergency contacts
+  const handleAddContact = async () => {
+    const hasPermission = await checkPermission('contacts', 'Contacts');
+    if (!hasPermission) return;
+    setContactSearch('');
+    setShowContactModal(true);
+  };
+
+  const selectContact = (contact) => {
+    if (emergencyContacts.find(c => c.id === contact.id)) {
+      Alert.alert('Already Added', 'This contact is already in your emergency list.');
+      return;
+    }
+    setEmergencyContacts([...emergencyContacts, contact]);
+    setShowContactModal(false);
+  };
+
+  // Delete contact from emergency contacts list
+  const handleDeleteContact = (contactId) => {
+    setEmergencyContacts(emergencyContacts.filter(c => c.id !== contactId));
+  };
+
+  const handleSendSOS = async () => {
+    const hasContacts = await checkPermission('contacts', 'Contacts');
+    const hasLocation = await checkPermission('location', 'Location');
+    if (!hasContacts || !hasLocation) return;
+
+    if (emergencyContacts.length === 0) {
+      Alert.alert('No Emergency Contacts', 'Please add emergency contacts before sending SOS.');
+      return;
+    }
     setShowConfirm(true);
   };
 
-  const confirmSendSOS = () => {
+  // Get user location with permission check
+  const getCurrentLocation = async () => {
+    const hasPermission = await checkPermission('location', 'Location');
+    if (!hasPermission) return 'Location permission denied';
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') return 'Location permission denied';
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+      return `Location: https://maps.google.com/?q=${latitude},${longitude}`;
+    } catch (error) {
+      return 'Unable to get location';
+    }
+  };
+
+  // Send SMS to all emergency contacts (with Android fix)
+  const sendSMSToContacts = async (messageWithLocation) => {
+    const isAvailable = await SMS.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('SMS Not Available', 'SMS is not available on this device.');
+      return false;
+    }
+
+    const phoneNumbers = emergencyContacts.map(contact => 
+      contact.phoneNumbers[0]?.number.replace(/[^\d+]/g, '')
+    );
+
+    try {
+      const result = await SMS.sendSMSAsync(phoneNumbers, messageWithLocation);
+      // Accept both 'sent' and 'unknown' as success (Android returns 'unknown' even if sent)
+      return result.result === 'sent' || result.result === 'unknown';
+    } catch (error) {
+      console.error('SMS Error:', error);
+      return false;
+    }
+  };
+
+  // Call emergency contacts
+  const callEmergencyContacts = () => {
+    Alert.alert(
+      'Call Emergency Contacts',
+      'Do you want to call your emergency contacts?',
+      [
+        { text: 'No', style: 'cancel' },
+        { 
+          text: 'Yes', 
+          onPress: () => {
+            emergencyContacts.forEach((contact, index) => {
+              setTimeout(() => {
+                const phoneNumber = contact.phoneNumbers[0]?.number.replace(/[^\d+]/g, '');
+                Linking.openURL(`tel:${phoneNumber}`);
+              }, index * 2000);
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const confirmSendSOS = async () => {
     setShowConfirm(false);
-    // TODO: Add actual SOS sending logic here (SMS, location sharing, etc.)
-    Alert.alert('SOS Alert', 'Emergency SOS message has been sent to your contacts!');
+    try {
+      const locationString = await getCurrentLocation();
+      const messageWithLocation = `${message}\n\n${locationString}`;
+      const smsSuccess = await sendSMSToContacts(messageWithLocation);
+      if (smsSuccess) {
+        Alert.alert('SOS Alert Sent!', 'Emergency message sent to your contacts.');
+        callEmergencyContacts();
+      } else {
+        Alert.alert('SMS Failed', 'Failed to send SMS. Trying to call contacts...');
+        callEmergencyContacts();
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send SOS alert.');
+      console.error('SOS Error:', error);
+    }
   };
 
-  const handleShareLocation = () => {
-    // TODO: Add location sharing logic
-    Alert.alert('Location Shared', 'Your location has been shared with emergency contacts!');
-  };
-
-  const handleAddContact = () => {
-    // TODO: Add contact picker logic
-    Alert.alert('Add Contact', 'Contact picker functionality will be implemented here.');
-  };
-
-  const handleEditContact = (contactId: string) => {
-    // TODO: Add edit contact logic
-    Alert.alert('Edit Contact', `Edit contact with ID: ${contactId}`);
-  };
-
-  const handleDeleteContact = (contactId: string) => {
-    setContacts(contacts.filter(contact => contact.id !== contactId));
-  };
+  // Filtered contacts for search
+  const filteredContacts = phoneContacts.filter(contact =>
+    contact.name?.toLowerCase().includes(contactSearch.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
@@ -55,33 +212,28 @@ export default function SOSAlertScreen() {
 
       {/* Send SOS Button */}
       <TouchableOpacity style={styles.sosBtn} onPress={handleSendSOS}>
-        <MaterialIcons name="lock" size={24} color="#fff" style={styles.lockIcon} />
+        <MaterialIcons name="emergency" size={24} color="#fff" style={styles.lockIcon} />
         <Text style={styles.sosBtnText}>SEND SOS NOW</Text>
-      </TouchableOpacity>
-
-      {/* Share Location Button */}
-      <TouchableOpacity style={styles.locationBtn} onPress={handleShareLocation}>
-        <MaterialIcons name="location-on" size={24} color="#fff" style={styles.locationIcon} />
-        <Text style={styles.locationBtnText}>SHARE LOCATION</Text>
       </TouchableOpacity>
 
       {/* Emergency Contacts Section */}
       <Text style={styles.sectionTitle}>EMERGENCY CONTACTS</Text>
-      
       <FlatList
-        data={contacts}
+        data={emergencyContacts}
         keyExtractor={item => item.id}
         style={styles.contactsList}
+        ListEmptyComponent={
+          loadingContacts
+            ? <Text style={{textAlign:'center', color:'#888'}}>Loading...</Text>
+            : <Text style={{textAlign:'center', color:'#888'}}>No emergency contacts added yet.</Text>
+        }
         renderItem={({ item }) => (
           <View style={styles.contactItem}>
             <View style={styles.contactInfo}>
               <Text style={styles.contactName}>{item.name}</Text>
-              <Text style={styles.contactNumber}>{item.number}</Text>
+              <Text style={styles.contactNumber}>{item.phoneNumbers[0]?.number}</Text>
             </View>
             <View style={styles.contactActions}>
-              <TouchableOpacity onPress={() => handleEditContact(item.id)} style={styles.editBtn}>
-                <Text style={styles.editText}>Edit</Text>
-              </TouchableOpacity>
               <TouchableOpacity onPress={() => handleDeleteContact(item.id)} style={styles.deleteBtn}>
                 <MaterialIcons name="delete" size={20} color="#e63946" />
               </TouchableOpacity>
@@ -130,15 +282,63 @@ export default function SOSAlertScreen() {
               <MaterialIcons name="warning" size={32} color="#fff" />
             </View>
             <Text style={styles.modalTitle}>Confirm SOS Alert</Text>
-            <Text style={styles.modalDesc}>Tap 'Continue' to send an emergency SOS message.</Text>
+            <Text style={styles.modalDesc}>This will send SMS with your location and offer to call your emergency contacts.</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowConfirm(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.continueBtn} onPress={confirmSendSOS}>
-                <Text style={styles.continueText}>Continue</Text>
+                <Text style={styles.continueText}>Send SOS</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Select Contact Modal */}
+      <Modal
+        visible={showContactModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowContactModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.contactModalBox}>
+            <Text style={styles.modalTitle}>Select Contact</Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#ddd',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 16,
+                marginBottom: 12,
+                width: '100%',
+              }}
+              placeholder="Search contacts by name"
+              value={contactSearch}
+              onChangeText={setContactSearch}
+            />
+            <FlatList
+              data={filteredContacts}
+              keyExtractor={item => item.id}
+              style={{ maxHeight: 340, width: 260 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.contactSelectItem}
+                  onPress={() => selectContact(item)}
+                >
+                  <Text style={styles.contactName}>{item.name}</Text>
+                  <Text style={styles.contactNumber}>{item.phoneNumbers[0]?.number}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={[styles.cancelBtn, { marginTop: 10, width: '100%' }]}
+              onPress={() => setShowContactModal(false)}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -169,33 +369,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 20,
     elevation: 2,
   },
   lockIcon: { 
     marginRight: 8 
   },
   sosBtnText: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
-  },
-  locationBtn: {
-    backgroundColor: '#071c6b',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-    elevation: 2,
-  },
-  locationIcon: { 
-    marginRight: 8 
-  },
-  locationBtnText: { 
     color: '#fff', 
     fontSize: 18, 
     fontWeight: 'bold' 
@@ -207,7 +389,7 @@ const styles = StyleSheet.create({
     marginBottom: 12 
   },
   contactsList: {
-    maxHeight: 120,
+    maxHeight: 140,
     marginBottom: 16,
   },
   contactItem: {
@@ -236,14 +418,6 @@ const styles = StyleSheet.create({
   contactActions: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  editBtn: {
-    marginRight: 12,
-  },
-  editText: {
-    color: '#071c6b',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   deleteBtn: {
     padding: 4,
@@ -282,7 +456,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.18)',
@@ -296,6 +469,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     elevation: 8,
+  },
+  contactModalBox: {
+    width: 320,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    alignItems: 'center',
+    padding: 24,
+    elevation: 8,
+  },
+  contactSelectItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+    width: '100%',
   },
   modalIconCircle: {
     width: 56,
@@ -347,5 +534,14 @@ const styles = StyleSheet.create({
     color: '#071c6b',
     fontWeight: 'bold',
     fontSize: 18,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    width: '100%',
+    marginBottom: 16,
   },
 });

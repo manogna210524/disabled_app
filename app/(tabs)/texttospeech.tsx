@@ -1,13 +1,31 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
 import React, { useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
 
 export default function TextToSpeechScreen() {
   const router = useRouter();
   const [message, setMessage] = useState('');
   const [voiceSpeed, setVoiceSpeed] = useState(false);
-  const [highContrast, setHighContrast] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const speak = () => {
+    if (message.trim()) {
+      Speech.speak(message, {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: voiceSpeed ? 1.2 : 0.8, // Fast if speed toggle is on
+      });
+      setIsSpeaking(true);
+    }
+  };
+
+  const stop = () => {
+    Speech.stop();
+    setIsSpeaking(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -30,10 +48,18 @@ export default function TextToSpeechScreen() {
 
       {/* Control Buttons */}
       <View style={styles.controlRow}>
-        <TouchableOpacity style={styles.playBtn}>
+        <TouchableOpacity 
+          style={[styles.playBtn, isSpeaking && styles.disabledBtn]} 
+          onPress={speak}
+          disabled={isSpeaking}
+        >
           <MaterialIcons name="play-arrow" size={32} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.stopBtn}>
+        <TouchableOpacity 
+          style={[styles.stopBtn, !isSpeaking && styles.disabledBtn]} 
+          onPress={stop}
+          disabled={!isSpeaking}
+        >
           <MaterialIcons name="stop" size={32} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -44,20 +70,28 @@ export default function TextToSpeechScreen() {
         <Text style={styles.speakerText}>Speaker (Optional)</Text>
         
         <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Voice/Speaker Speed</Text>
-          <Switch value={voiceSpeed} onValueChange={setVoiceSpeed} />
+          <Text style={styles.settingLabel}>Faster Speech</Text>
+          <Switch 
+            value={voiceSpeed} 
+            onValueChange={setVoiceSpeed}
+            trackColor={{ false: '#ccc', true: '#0a1663' }}
+          />
         </View>
 
-        <Text style={styles.settingsTitle}>Language</Text>
+        <Text style={styles.settingsTitle}>Accessibility</Text>
         
         <View style={styles.settingRow}>
           <Text style={styles.settingLabel}>Larger Font</Text>
-          <Switch value={false} onValueChange={() => {}} />
+          <Switch 
+            trackColor={{ false: '#ccc', true: '#0a1663' }}
+          />
         </View>
         
         <View style={styles.settingRow}>
           <Text style={styles.settingLabel}>High Contrast UI</Text>
-          <Switch value={highContrast} onValueChange={setHighContrast} />
+          <Switch 
+            trackColor={{ false: '#ccc', true: '#0a1663' }}
+          />
         </View>
       </View>
     </View>
@@ -76,6 +110,8 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     fontSize: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   controlRow: {
     flexDirection: 'row',
@@ -98,6 +134,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  disabledBtn: {
+    opacity: 0.6,
   },
   settingsContainer: { flex: 1 },
   settingsTitle: { fontSize: 18, fontWeight: 'bold', color: '#071c6b', marginBottom: 12 },

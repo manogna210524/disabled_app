@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as Contacts from 'expo-contacts';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PermissionModal from '../../components/PermissionModal';
 
 const permissionOrder = ['location', 'contacts', 'microphone', 'notifications'] as const;
@@ -13,40 +14,98 @@ const permissionOrder = ['location', 'contacts', 'microphone', 'notifications'] 
 export default function WelcomeVoiceScreen() {
   const router = useRouter();
   const [permStep, setPermStep] = useState<number | null>(null);
+  const [permanentDenials, setPermanentDenials] = useState<Set<string>>(new Set());
 
+  // Check permissions and onboarding status
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const onboardingComplete = await AsyncStorage.getItem('onboarding_complete');
+      if (onboardingComplete === 'true') {
+        router.push('/listening');
+        return;
+      }
+
+      for (let i = 0; i < permissionOrder.length; i++) {
+        const type = permissionOrder[i];
+        const status = await AsyncStorage.getItem(`perm_${type}`);
+        if (status !== 'granted') {
+          setPermStep(i);
+          return;
+        }
+      }
+      await AsyncStorage.setItem('onboarding_complete', 'true');
+      router.push('/listening');
+    };
+    checkPermissions();
+  }, []);
+
+  // Request permission and store status
   const askPermission = async (type: string) => {
-    if (type === 'location') {
-      await Location.requestForegroundPermissionsAsync();
-    } else if (type === 'contacts') {
-      await Contacts.requestPermissionsAsync();
-    } else if (type === 'microphone') {
-      await Audio.requestPermissionsAsync();
-    } else if (type === 'notifications') {
-      await Notifications.requestPermissionsAsync();
+    let status;
+    try {
+      if (type === 'location') {
+        const { status: locStatus, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+        status = locStatus;
+        if (!canAskAgain) permanentDenials.add(type);
+      } 
+      else if (type === 'contacts') {
+        const { status: contactStatus, canAskAgain } = await Contacts.requestPermissionsAsync();
+        status = contactStatus;
+        if (!canAskAgain) permanentDenials.add(type);
+      } 
+      else if (type === 'microphone') {
+        const { status: micStatus, canAskAgain } = await Audio.requestPermissionsAsync();
+        status = micStatus;
+        if (!canAskAgain) permanentDenials.add(type);
+      } 
+      else if (type === 'notifications') {
+        const { status: notifStatus, canAskAgain } = await Notifications.requestPermissionsAsync();
+        status = notifStatus;
+        if (!canAskAgain) permanentDenials.add(type);
+      }
+      
+      await AsyncStorage.setItem(`perm_${type}`, status || 'undetermined');
+      return status;
+    } catch (error) {
+      console.error(`Permission error for ${type}:`, error);
+      return 'undetermined';
     }
   };
 
   const handleAllow = async () => {
-    if (permStep !== null) {
-      await askPermission(permissionOrder[permStep]);
+    if (permStep === null) return;
+    const type = permissionOrder[permStep];
+    const status = await askPermission(type);
+
+    if (status === 'granted') {
       if (permStep < permissionOrder.length - 1) {
         setPermStep(permStep + 1);
       } else {
+        await AsyncStorage.setItem('onboarding_complete', 'true');
         setPermStep(null);
         router.push('/listening');
       }
+    } else {
+      handleDeny();
     }
   };
 
-  const handleDeny = () => {
-    if (permStep !== null) {
-      if (permStep < permissionOrder.length - 1) {
-        setPermStep(permStep + 1);
-      } else {
-        setPermStep(null);
-        router.push('/listening');
-      }
+  const handleDeny = async () => {
+    if (permStep === null) return;
+    const type = permissionOrder[permStep];
+    await AsyncStorage.setItem(`perm_${type}`, 'denied');
+    
+    if (permStep < permissionOrder.length - 1) {
+      setPermStep(permStep + 1);
+    } else {
+      await AsyncStorage.setItem('onboarding_complete', 'true');
+      setPermStep(null);
+      router.push('/listening');
     }
+  };
+
+  const handleOpenSettings = () => {
+    Linking.openSettings();
   };
 
   return (
@@ -63,13 +122,14 @@ export default function WelcomeVoiceScreen() {
         <Text style={styles.buttonText}>TAP TO START</Text>
       </TouchableOpacity>
 
-      {/* Permission Popups */}
       {permStep !== null && (
         <PermissionModal
           visible={true}
           type={permissionOrder[permStep]}
           onAllow={handleAllow}
           onDeny={handleDeny}
+          onSettings={handleOpenSettings}
+          isPermanentlyDenied={permanentDenials.has(permissionOrder[permStep])}
         />
       )}
     </View>
@@ -127,3 +187,4 @@ const styles = StyleSheet.create({
     fontFamily: 'serif',
   },
 });
+

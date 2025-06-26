@@ -1,25 +1,61 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native'; // Updated import
+import { Audio } from 'expo-av';
+import * as Contacts from 'expo-contacts';
+import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react'; // Added useCallback
+import {
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import LogoutConfirmModal from '../../components/LogoutConfirmModal';
+import { supabase } from '../../lib/supabase';
+
+const permissions = [
+  { key: 'location', label: 'Location', request: () => Location.requestForegroundPermissionsAsync() },
+  { key: 'contacts', label: 'Contacts', request: () => Contacts.requestPermissionsAsync() },
+  { key: 'microphone', label: 'Microphone', request: () => Audio.requestPermissionsAsync() },
+  { key: 'notifications', label: 'Notifications', request: () => Notifications.requestPermissionsAsync() },
+];
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [permissionStatuses, setPermissionStatuses] = useState({});
   
-  // Toggle states
-  const [voiceFeedback, setVoiceFeedback] = useState(true);
-  const [speechInput, setSpeechInput] = useState(false);
-  const [subtitles, setSubtitles] = useState(true);
-  const [textToSpeech, setTextToSpeech] = useState(false);
-  const [contrast, setContrast] = useState(true);
+  // Load permissions function
+  const loadPermissions = useCallback(async () => {
+    const statuses = {};
+    for (const perm of permissions) {
+      statuses[perm.key] = await AsyncStorage.getItem(`perm_${perm.key}`) || 'undetermined';
+    }
+    setPermissionStatuses(statuses);
+  }, []);
 
-  const handleLogout = () => {
-    setShowLogoutModal(false);
-    // Clear any user session/tokens here if needed
-    // For example: AsyncStorage.removeItem('userToken');
-    router.push('/login');
+  // Load permissions on mount
+  useEffect(() => {
+    loadPermissions();
+  }, []);
+
+  // Refresh permissions when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadPermissions();
+    }, [loadPermissions])
+  );
+
+  // Get status color
+  const getStatusColor = (status) => {
+    if (status === 'granted') return '#4CAF50';
+    if (status === 'denied') return '#e63946';
+    return '#888';
   };
 
   return (
@@ -32,93 +68,50 @@ export default function SettingsScreen() {
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
-      {/* Settings List */}
-      <View style={styles.settingsContainer}>
-        {/* SOS Contact */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>SOS Contact</Text>
-          <TouchableOpacity style={styles.addEditBtn}>
-            <Text style={styles.addEditText}>Add/Edit</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Voice Feedback */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Voice Feedback</Text>
-          <Switch
-            value={voiceFeedback}
-            onValueChange={setVoiceFeedback}
-            trackColor={{ false: '#ccc', true: '#071c6b' }}
-            thumbColor={voiceFeedback ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Speech Input */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Speech Input</Text>
-          <Switch
-            value={speechInput}
-            onValueChange={setSpeechInput}
-            trackColor={{ false: '#ccc', true: '#e63946' }}
-            thumbColor={speechInput ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Subtitles */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Subtitles</Text>
-          <Switch
-            value={subtitles}
-            onValueChange={setSubtitles}
-            trackColor={{ false: '#ccc', true: '#071c6b' }}
-            thumbColor={subtitles ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Text-to-Speech */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Text-to-Speech</Text>
-          <Switch
-            value={textToSpeech}
-            onValueChange={setTextToSpeech}
-            trackColor={{ false: '#ccc', true: '#e63946' }}
-            thumbColor={textToSpeech ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Contrast */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Contrast</Text>
-          <Switch
-            value={contrast}
-            onValueChange={setContrast}
-            trackColor={{ false: '#ccc', true: '#071c6b' }}
-            thumbColor={contrast ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Profile */}
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Profile</Text>
-          <TouchableOpacity style={styles.viewProfileBtn}>
-            <Text style={styles.viewProfileText}>View Profile</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Scrollable Content */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Permissions Section */}
+        <Text style={styles.sectionTitle}>App Permissions</Text>
+        {permissions.map(perm => (
+          <View key={perm.key} style={styles.permissionRow}>
+            <View style={styles.permissionInfo}>
+              <Text style={styles.permissionLabel}>{perm.label}</Text>
+              <Text style={[styles.permissionStatus, { 
+                color: getStatusColor(permissionStatuses[perm.key]) 
+              }]}>
+                {permissionStatuses[perm.key] || 'undetermined'}
+              </Text>
+            </View>
+            <View style={styles.permissionActions}>
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => Linking.openSettings()}
+              >
+                <Text style={styles.buttonText}>Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
 
       {/* Logout Button */}
       <TouchableOpacity
-        style={styles.logoutBtn}
+        style={styles.logoutButton}
         onPress={() => setShowLogoutModal(true)}
       >
-        <Text style={styles.logoutBtnText}>Logout</Text>
+        <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
 
-      {/* Logout Confirmation Modal */}
       <LogoutConfirmModal
         visible={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
-        onConfirm={handleLogout}
+        onConfirm={() => {
+          supabase.auth.signOut();
+          router.replace('/login');
+        }}
       />
     </View>
   );
@@ -128,72 +121,77 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f4f6fa',
-    paddingHorizontal: 16,
-    paddingTop: 40,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
     marginLeft: 16,
   },
-  settingsContainer: {
-    flex: 1,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0a1663',
+    marginTop: 20,
+    marginBottom: 12,
   },
-  settingRow: {
+  permissionRow: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#e8e8e8',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 8,
-    borderRadius: 8,
+    elevation: 2,
   },
-  settingLabel: {
+  permissionInfo: {
+    flex: 1,
+  },
+  permissionLabel: {
     fontSize: 16,
-    color: '#000',
     fontWeight: '500',
   },
-  addEditBtn: {
-    backgroundColor: '#071c6b',
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  permissionStatus: {
+    fontSize: 14,
+    marginTop: 4,
   },
-  addEditText: {
-    color: '#fff',
+  permissionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  settingsButton: {
+    backgroundColor: '#0a1663',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  buttonText: {
+    color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
   },
-  viewProfileBtn: {
-    backgroundColor: '#071c6b',
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  viewProfileText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  logoutBtn: {
+  logoutButton: {
     backgroundColor: '#e63946',
     borderRadius: 8,
-    paddingVertical: 16,
+    padding: 16,
+    margin: 16,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
   },
-  logoutBtnText: {
-    color: '#fff',
-    fontSize: 18,
+  logoutText: {
+    color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
-
