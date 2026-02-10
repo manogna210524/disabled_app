@@ -37,29 +37,28 @@ The app focuses on accessibility, simplicity, and safety, enabling users to inte
 
 
 
-```
----
+
 
 ##  Screenshots
 
 <table>
   <tr>
-    <td><img src="./assets/images/screenshots/" width="200" /></td>
-    <td><img src="./screenshots/IMG_8249.PNG" width="200" /></td>
-     <td><img src="./screenshots/sign_in.jpeg" width="200" /></td>
-    <td><img src="./screenshots/home.jpeg"   width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.39 AM.jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.39 AM (1).jpeg" width="200" /></td>
+     <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.39 AM (2).jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.39 AM (3).jpeg"   width="200" /></td>
   </tr>
   <tr>
-    <td><img src="./screenshots/IMG_8252.PNG" width="200" /></td>
-    <td><img src="./screenshots/IMG_8253.PNG" width="200" /></td>
-    <td><img src="./screenshots/IMG_8254.PNG" width="200" /></td>
-     <td><img src="./screenshots/IMG_8256.PNG" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.40 AM.jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.40 AM (1).jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.40 AM (2).jpeg" width="200" /></td>
+     <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.54 AM.jpeg" width="200" /></td>
   </tr>
   <tr>
-    <td><img src="./screenshots/IMG_8257.PNG" width="200" /></td>
-    <td><img src="./screenshots/IMG_8258.PNG" width="200" /></td>
-    <td><img src="./screenshots/IMG_8259.PNG" width="200" /></td>
-    <td><img src="./screenshots/WhatsApp Image 2025-07-01 at 13.27.48 (2).jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.54 AM (1).jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.55 AM.jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.55 AM (1).jpeg" width="200" /></td>
+    <td><img src="assets/images/screenshots/WhatsApp Image 2026-02-11 at 1.46.55 AM (2).jpeg" width="200" /></td>
     
   </tr>
 </table>
