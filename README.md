@@ -1,6 +1,6 @@
 #  CareMate  
 *Assistive Mobile App for Persons with Disabilities*
-![CareMate Logo](./assets/images/favicon.png) 
+![CareMate Logo](./assets/images/Caremate_logo.png) 
 
   
 > Developed under the guidance of **Dr. Subhra Mazumdar**, IIT Indore.
@@ -44,7 +44,7 @@ The app focuses on accessibility, simplicity, and safety, enabling users to inte
 
 <table>
   <tr>
-    <td><img src="./screenshots/IMG_8248.PNG" width="200" /></td>
+    <td><img src="./assets/images/screenshots/" width="200" /></td>
     <td><img src="./screenshots/IMG_8249.PNG" width="200" /></td>
      <td><img src="./screenshots/sign_in.jpeg" width="200" /></td>
     <td><img src="./screenshots/home.jpeg"   width="200" /></td>
