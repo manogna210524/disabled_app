@@ -1,50 +1,73 @@
-# Welcome to your Expo app 👋
+#  CareMate  
+*Assistive Mobile App for Persons with Disabilities*
+![CareMate Logo](./assets/images/favicon.png) 
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+  
+> Developed under the guidance of **Dr. Subhra Mazumdar**, IIT Indore.
 
-## Get started
+---
 
-1. Install dependencies
+## Overview
 
-   ```bash
-   npm install
-   ```
+**CareMate** is a voice-first assistive Android application designed to help persons with disabilities perform essential daily tasks independently.
+The app focuses on accessibility, simplicity, and safety, enabling users to interact through voice, touch, vibration, and visual cues.
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Features
 
-In the output, you'll find options to open the app in a
+-  **Voice-Controlled Navigation**
+-  **Text-to-Speech (TTS)**
+-  **Speech-to-Text (STT)**
+-  **Smart Reminders**
+-  **SOS Alert System**
+-  **Live Location Sharing**
+-  **Accessible Manual Mode**
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+##  Tech Stack
 
-## Get a fresh project
+| Layer       | Technology                     |
+|-------------|-------------------------------|
+| Frontend    | React Native (Expo)       |
+| Backend & Auth     | Supabase (PostgreSQL, OAuth, RLS)   |
+| Voice Processing  |react-native-voice, expo-speech                    |
+| Location & Permissions        | Expo SDK                |
 
-When you're ready, run:
 
-```bash
-npm run reset-project
+
 ```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+##  Screenshots
 
-## Learn more
+<table>
+  <tr>
+    <td><img src="./screenshots/IMG_8248.PNG" width="200" /></td>
+    <td><img src="./screenshots/IMG_8249.PNG" width="200" /></td>
+     <td><img src="./screenshots/sign_in.jpeg" width="200" /></td>
+    <td><img src="./screenshots/home.jpeg"   width="200" /></td>
+  </tr>
+  <tr>
+    <td><img src="./screenshots/IMG_8252.PNG" width="200" /></td>
+    <td><img src="./screenshots/IMG_8253.PNG" width="200" /></td>
+    <td><img src="./screenshots/IMG_8254.PNG" width="200" /></td>
+     <td><img src="./screenshots/IMG_8256.PNG" width="200" /></td>
+  </tr>
+  <tr>
+    <td><img src="./screenshots/IMG_8257.PNG" width="200" /></td>
+    <td><img src="./screenshots/IMG_8258.PNG" width="200" /></td>
+    <td><img src="./screenshots/IMG_8259.PNG" width="200" /></td>
+    <td><img src="./screenshots/WhatsApp Image 2025-07-01 at 13.27.48 (2).jpeg" width="200" /></td>
+    
+  </tr>
+</table>
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
 
-Join our community of developers creating universal apps.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+
