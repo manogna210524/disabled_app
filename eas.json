@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug --stacktrace --info"
+      }
     },
     "preview": {
       "distribution": "internal"
@@ -17,14 +20,5 @@
   },
   "submit": {
     "production": {}
-  },
-  "build": {
-    "development": {
-      "android": {
-        "gradleCommand": ":app:assembleDebug --stacktrace --info"
-      }
-    }
   }
 }
-
-

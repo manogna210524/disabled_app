@@ -1,176 +1,242 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import Voice from '@react-native-voice/voice';
 import { useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
-import React, { useEffect, useState } from 'react';
-import {
-  PermissionsAndroid, Platform,
-  StyleSheet, Switch, Text, TouchableOpacity, View,
-} from 'react-native';
-
-async function requestMicrophonePermission() {
-  if (Platform.OS === 'android') {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      {
-        title: 'Microphone Permission',
-        message: 'This app needs access to your microphone for speech recognition.',
-        buttonPositive: 'OK',
-      }
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
-  }
-  return true;
-}
-
-// Define styles BEFORE using them in the component
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6fa', paddingHorizontal: 20, paddingTop: 36 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#071c6b', marginLeft: 16, letterSpacing: 1 },
-  micCircle: {
-    width: 140, height: 140, borderRadius: 70,
-    backgroundColor: '#071c6b', justifyContent: 'center', alignItems: 'center',
-    alignSelf: 'center', marginBottom: 24,
-  },
-  listening: {
-    backgroundColor: '#e63946',
-  },
-  questionBox: {
-    backgroundColor: '#eaeaea',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    alignSelf: 'center',
-    minWidth: 220,
-    minHeight: 100,
-    justifyContent: 'center',
-  },
-  questionText: { fontSize: 18, color: '#222', textAlign: 'center' },
-  placeholderText: { fontSize: 18, color: '#888', textAlign: 'center', fontStyle: 'italic' },
-  errorText: { fontSize: 16, color: '#e63946', textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 10 },
-  speakerBtn: {
-    backgroundColor: '#071c6b',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    marginRight: 8,
-  },
-  speakerText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  optionalText: { color: '#888', fontSize: 16 },
-  toggleRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  toggleLabel: { fontSize: 16, color: '#071c6b', fontWeight: 'bold' },
-});
+import React, { useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SpeechToTextScreen() {
   const router = useRouter();
-  const [muteUI, setMuteUI] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [error, setError] = useState('');
+  const [spoken, setSpoken] = useState('');
+  const [waveAnim] = useState(new Animated.Value(0));
 
-  useEffect(() => {
-    // Setup voice listeners
-    Voice.onSpeechResults = (e) => {
-      if (e.value && e.value.length > 0) {
-        setTranscript(e.value[0]);
-      }
-    };
-
-    Voice.onSpeechError = (e) => {
-      setError(e.error?.message || 'Speech recognition error');
-      setIsListening(false);
-    };
-
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
-
-  const toggleListening = async () => {
-    try {
-      if (isListening) {
-        await Voice.stop();
-        setIsListening(false);
-      } else {
-        const hasPermission = await requestMicrophonePermission();
-        if (!hasPermission) {
-          setError('Microphone permission denied.');
-          return;
-        }
-        setTranscript('');
-        setError('');
-        await Voice.start('en-US');
-        setIsListening(true);
-      }
-    } catch (e) {
-      setError(String(e));
-      setIsListening(false);
+  const onMicPress = () => {
+    setIsListening(l => !l);
+    if (!isListening) {
+      setSpoken('');
+      startWave();
+    } else {
+      stopWave();
     }
   };
 
-  const speakTranscript = () => {
-    if (transcript.trim()) {
-      Speech.speak(transcript);
-    }
+  const startWave = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(waveAnim, { toValue: 1, duration: 340, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(waveAnim, { toValue: 0, duration: 340, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ])
+    ).start();
   };
+
+  const stopWave = () => {
+    waveAnim.stopAnimation();
+  };
+
+  React.useEffect(() => {
+    if (isListening) {
+      setTimeout(() => setSpoken("What's on my calendar for tomorrow?"), 1300);
+    }
+  }, [isListening]);
+  const barHeight = waveAnim.interpolate({ inputRange: [0, 1], outputRange: [18, 42] });
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/home')}>
-          <Ionicons name="arrow-back" size={28} color="#071c6b" />
+    <View style={styles.bg}>
+      <View style={styles.card}>
+        {/* Back arrow */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.push('/home')}>
+          <Ionicons name="arrow-back" size={28} color="#2871e6" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>SPEECH-TO-TEXT</Text>
-      </View>
-
-      {/* Microphone Circle */}
-      <TouchableOpacity onPress={toggleListening}>
-        <View style={[styles.micCircle, isListening && styles.listening]}>
-          <MaterialIcons
-            name={isListening ? 'mic-off' : 'mic'}
-            size={80}
-            color="#fff"
-          />
+        {/* Mic avatar/icon */}
+        <View style={styles.micAvatar}>
+          <MaterialIcons name="mic" size={35} color="#2871e6" />
         </View>
-      </TouchableOpacity>
-
-      {/* Question Display */}
-      <View style={styles.questionBox}>
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : transcript ? (
-          <Text style={styles.questionText}>{transcript}</Text>
-        ) : (
-          <Text style={styles.placeholderText}>What's on my calendar?</Text>
-        )}
-      </View>
-
-      {/* Speaker Button and Mute Toggle */}
-      <View style={styles.row}>
+        <Text style={styles.title}>Speech to Text</Text>
+        <Text style={styles.subtitle}>Tap mic and speak. Your words will appear below!</Text>
+        {/* Preview box */}
+        <View style={styles.previewBox}>
+          <Text style={styles.previewText}>
+            {spoken ? spoken : "Your words will appear here..."}
+          </Text>
+        </View>
+        {/* Waveform animation */}
+        <View style={styles.waveWrap}>
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.waveBar,
+                isListening && { height: barHeight },
+                { opacity: isListening ? 1 : 0.35, marginLeft: i === 0 ? 0 : 7 },
+              ]}
+            />
+          ))}
+        </View>
+        {/* Big microphone */}
         <TouchableOpacity
-          style={styles.speakerBtn}
-          onPress={speakTranscript}
-          disabled={!transcript}
+          style={[styles.micOuter, isListening && { backgroundColor: '#2871e6', borderColor: '#2871e6' }]}
+          onPress={onMicPress}
         >
-          <Text style={styles.speakerText}>Speaker</Text>
+          <MaterialIcons name="mic" size={38} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.optionalText}>(Optional)</Text>
-      </View>
-      <View style={styles.toggleRow}>
-        <Text style={styles.toggleLabel}>Mute UI Sounds</Text>
-        <Switch
-          value={muteUI}
-          onValueChange={setMuteUI}
-          trackColor={{ false: '#ccc', true: '#0a1663' }}
-        />
+        {/* Start/Stop controls */}
+        <View style={styles.bottomRow}>
+          <TouchableOpacity
+            style={[
+              styles.bottomBtn,
+              { backgroundColor: '#2871e6' }
+            ]}
+            onPress={() => setIsListening(false)}
+          >
+            <Ionicons name="stop" size={22} color="#fff" />
+            <Text style={styles.bottomBtnText}>STOP</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.bottomBtn,
+              { backgroundColor: isListening ? '#44e3b4' : '#2871e6' }
+            ]}
+            onPress={onMicPress}
+          >
+            <MaterialIcons name={isListening ? "pause-circle" : "play-arrow"} size={22} color="#fff" />
+            <Text style={styles.bottomBtnText}>{isListening ? "PAUSE" : "START"}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  bg: {
+    flex: 1,
+    backgroundColor: '#f4f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 38,
+    width: '100%',
+    maxWidth: 540,
+    minHeight: 650,
+    alignItems: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 40,
+    shadowColor: "#2871e6",
+    shadowOpacity: 0.15,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: 15 },
+    elevation: 24,
+  },
+  backBtn: {
+    position: "absolute",
+    top: 28,
+    left: 28,
+    padding: 8,
+    zIndex: 99,
+  },
+  micAvatar: {
+    marginTop: 18,
+    backgroundColor: "#e7f1ff",
+    width: 59,
+    height: 59,
+    borderRadius: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#2871e6",
+    shadowOpacity: 0.13,
+    shadowOffset: { width: 0, height: 9 },
+    marginBottom: 13,
+    elevation: 6,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#2871e6",
+    marginBottom: 3,
+    marginTop: 11,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 17,
+    fontWeight: "500",
+    color: "#232841",
+    marginBottom: 27,
+    textAlign: "center",
+  },
+  previewBox: {
+    width: '100%',
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#b3dafe",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 7 },
+    marginBottom: 24,
+    elevation: 4,
+    borderWidth: 1.5,
+    borderColor: "#e3eefe",
+  },
+  previewText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#193970",
+    textAlign: "center",
+  },
+  waveWrap: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    marginBottom: 19,
+    marginTop: 0,
+    height: 38,
+  },
+  waveBar: {
+    width: 11,
+    height: 18,
+    borderRadius: 5,
+    backgroundColor: "#87bdfd",
+  },
+  micOuter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#2871e6",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 8,
+    borderColor: "#2871e6",
+    borderWidth: 3,
+    marginBottom: 31,
+  },
+  bottomRow: {
+    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 21,
+    marginBottom: 2,
+  },
+  bottomBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    marginHorizontal: 13,
+    paddingVertical: 17,
+    elevation: 2,
+    backgroundColor: "#2871e6",
+    shadowColor: "#aee1fc",
+  },
+  bottomBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 18,
+    marginLeft: 10,
+    letterSpacing: 0.19,
+  },
+});

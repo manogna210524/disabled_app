@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "We need access to your microphone to enable speech-to-text functionality."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -51,6 +54,8 @@
       "eas": {
         "projectId": "67a3f353-eae8-4d7e-bfbb-8ab49d6838fd"
       }
-    }
+    },
+    "owner": "manogna_2606"
   }
 }
+

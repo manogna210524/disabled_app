@@ -11,8 +11,8 @@ export default function ListeningScreen() {
     <View style={styles.container}>
       {/* Header with back arrow */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/welcomevoice')}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+        <TouchableOpacity onPress={() => router.replace('/welcomevoice')}>
+          <Ionicons name="arrow-back" size={24} color="#1994ea" />
         </TouchableOpacity>
       </View>
 
@@ -21,7 +21,9 @@ export default function ListeningScreen() {
 
       {/* Microphone icon with dots */}
       <View style={styles.micSection}>
-        <Ionicons name="mic" size={80} color="#bbb" />
+        <View style={styles.micCircle}>
+          <Ionicons name="mic" size={48} color="#fff" />
+        </View>
         <View style={styles.dots}>
           <View style={styles.dot} />
           <View style={styles.dot} />
@@ -31,14 +33,14 @@ export default function ListeningScreen() {
 
       {/* Question bubble */}
       <View style={styles.questionBubble}>
-        <Text style={styles.questionText}>What's on my calender?</Text>
+        <Text style={styles.questionText}>What's on my calendar?</Text>
       </View>
 
       {/* Type Input field */}
       <TextInput
         style={styles.typeInput}
         placeholder="Type Input"
-        placeholderTextColor="#999"
+        placeholderTextColor="#88a1ba"
         value={inputText}
         onChangeText={setInputText}
       />
@@ -50,14 +52,14 @@ export default function ListeningScreen() {
           <Text style={styles.replayText}>Replay Response</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.yellowBtn}>
-          <MaterialIcons name="volume-up" size={20} color="#000" />
+          <MaterialIcons name="volume-up" size={20} color="#1994ea" />
         </TouchableOpacity>
       </View>
 
       {/* Manual Mode button */}
       <TouchableOpacity
         style={styles.manualBtn}
-        onPress={() => router.push('/home')}
+        onPress={() => router.replace('/home')}
       >
         <Text style={styles.manualText}>Manual Mode</Text>
       </TouchableOpacity>
@@ -68,87 +70,122 @@ export default function ListeningScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f6fa',
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    backgroundColor: '#fafdff',
+    paddingHorizontal: 24,
+    paddingTop: 36,
+    marginTop: 50,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0a1663',
+    fontSize: 23,
+    fontWeight: '500',
+    color: '#25324B',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
   },
   micSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
+  },
+  micCircle: {
+    width: 90,
+    height: 90,
+    backgroundColor: '#1994ea',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 45,
+    shadowColor: '#1582c5',
+    shadowOffset: { width: 1, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 10,
   },
   dots: {
     flexDirection: 'row',
-    marginTop: 10,
+    marginTop: 13,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#bbb',
-    marginHorizontal: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#c6e2f8',
+    marginHorizontal: 5,
   },
   questionBubble: {
-    backgroundColor: '#cbe1f7',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: '#e8f6ff',
+    borderRadius: 18,
+    paddingVertical: 13,
+    paddingHorizontal: 26,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
+    shadowColor: '#addfff',
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.13,
+    shadowRadius: 10,
+    elevation: 3,
   },
   questionText: {
     fontSize: 16,
-    color: '#000',
+    color: '#25324B',
+    fontWeight: '500',
   },
   typeInput: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 20,
+    backgroundColor: '#f2f8fb',
+    borderRadius: 9,
+    padding: 13,
+    fontSize: 15,
+    marginBottom: 16,
+    color: '#25324B',
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
+    justifyContent: 'center',
   },
   replayBtn: {
-    backgroundColor: '#4caf50',
+    backgroundColor: '#31c2d8',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 9,
+    paddingHorizontal: 18,
     borderRadius: 8,
-    marginRight: 10,
+    marginRight: 12,
   },
   replayText: {
     color: '#fff',
-    marginLeft: 5,
-    fontSize: 14,
+    marginLeft: 7,
+    fontSize: 15,
+    fontWeight: '500',
   },
   yellowBtn: {
-    backgroundColor: '#ffeb3b',
-    padding: 8,
-    borderRadius: 8,
+    backgroundColor: '#e9f3fb',
+    padding: 10,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#b7e3fb',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   manualBtn: {
-    backgroundColor: '#0a1663',
-    borderRadius: 8,
+    backgroundColor: '#1994ea',
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 5,
+    marginHorizontal: 12,
+    marginBottom: 10,
+    shadowColor: '#1582c5',
+    shadowOffset: { width: 1, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
   },
   manualText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
 });

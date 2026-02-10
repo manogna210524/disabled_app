@@ -2,21 +2,28 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import React, { useState } from 'react';
-import { StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import {
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function TextToSpeechScreen() {
   const router = useRouter();
   const [message, setMessage] = useState('');
   const [voiceSpeed, setVoiceSpeed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
 
   const speak = () => {
     if (message.trim()) {
       Speech.speak(message, {
         language: 'en-US',
         pitch: 1.0,
-        rate: voiceSpeed ? 1.2 : 0.8, // Fast if speed toggle is on
+        rate: voiceSpeed ? 1.2 : 0.8,
       });
       setIsSpeaking(true);
     }
@@ -28,70 +35,88 @@ export default function TextToSpeechScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/home')}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>TEXT-TO-SPEECH</Text>
-      </View>
+    <View style={[styles.bg, highContrast && { backgroundColor: '#000' }]}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.push('/home')}>
+        <Ionicons
+          name="arrow-back"
+          size={28}
+          color={highContrast ? '#FFD700' : '#2871e6'}
+        />
+      </TouchableOpacity>
 
-      {/* Message Input */}
-      <TextInput
-        style={styles.messageInput}
-        placeholder="Type your message here..."
-        value={message}
-        onChangeText={setMessage}
-        multiline
-      />
+      <View style={styles.card}>
+        <View style={styles.headerCentered}>
+          <View style={[styles.headerIconCircle, highContrast && { backgroundColor: '#FFD700' }]}>
+            <Ionicons
+              name="mic"
+              size={30}
+              color={highContrast ? '#000' : '#2871e6'}
+            />
+          </View>
+        </View>
+        <Text style={[styles.headerTitle, highContrast && { color: '#FFD700' }]}>
+          Text to Speech
+        </Text>
+        <Text style={[styles.caption, highContrast && { color: '#FFF' }]}>
+          Type your message and play it aloud!
+        </Text>
 
-      {/* Control Buttons */}
-      <View style={styles.controlRow}>
-        <TouchableOpacity 
-          style={[styles.playBtn, isSpeaking && styles.disabledBtn]} 
-          onPress={speak}
-          disabled={isSpeaking}
-        >
-          <MaterialIcons name="play-arrow" size={32} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.stopBtn, !isSpeaking && styles.disabledBtn]} 
-          onPress={stop}
-          disabled={!isSpeaking}
-        >
-          <MaterialIcons name="stop" size={32} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Voice Settings */}
-      <View style={styles.settingsContainer}>
-        <Text style={styles.settingsTitle}>Voice</Text>
-        <Text style={styles.speakerText}>Speaker (Optional)</Text>
-        
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Faster Speech</Text>
-          <Switch 
-            value={voiceSpeed} 
-            onValueChange={setVoiceSpeed}
-            trackColor={{ false: '#ccc', true: '#0a1663' }}
+        <View style={[styles.inputBox, highContrast && { backgroundColor: '#000' }]}>
+          <TextInput
+            style={[styles.input, highContrast && { color: '#FFD700' }]}
+            placeholder="Your message..."
+            placeholderTextColor={highContrast ? '#FFD70099' : '#b2bfd8'}
+            multiline
+            value={message}
+            onChangeText={setMessage}
           />
+          <View style={styles.controlRow}>
+            <TouchableOpacity
+              style={[styles.playBtn, isSpeaking && styles.disabledBtn, highContrast && { backgroundColor: '#FFD700' }]}
+              onPress={speak}
+              disabled={isSpeaking}
+            >
+              <MaterialIcons
+                name="play-arrow"
+                size={28}
+                color={highContrast ? '#000' : '#fff'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.stopBtn, !isSpeaking && styles.disabledBtn, highContrast && { backgroundColor: '#FFD700' }]}
+              onPress={stop}
+              disabled={!isSpeaking}
+            >
+              <MaterialIcons
+                name="stop"
+                size={26}
+                color={highContrast ? '#000' : '#fff'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <Text style={styles.settingsTitle}>Accessibility</Text>
-        
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Larger Font</Text>
-          <Switch 
-            trackColor={{ false: '#ccc', true: '#0a1663' }}
-          />
-        </View>
-        
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>High Contrast UI</Text>
-          <Switch 
-            trackColor={{ false: '#ccc', true: '#0a1663' }}
-          />
+        <View style={[styles.settingsCard, highContrast && { backgroundColor: '#000', borderColor: '#FFD700' }]}>
+          <Text style={[styles.settingsHeader, highContrast && { color: '#FFD700' }]}>Settings</Text>
+          <View style={styles.settingRow}>
+            <Text style={[styles.settingLabel, highContrast && { color: '#FFD700' }]}>Voice Speed</Text>
+            <Switch
+              value={voiceSpeed}
+              onValueChange={setVoiceSpeed}
+              trackColor={{ true: highContrast ? '#FFD700' : '#2871e6' }}
+              thumbColor={highContrast ? '#000' : '#fff'}
+            />
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.settingRow}>
+            <Text style={[styles.settingLabel, highContrast && { color: '#FFD700' }]}>High Contrast</Text>
+            <Switch
+              value={highContrast}
+              onValueChange={setHighContrast}
+              trackColor={{ true: '#FFD700' }}
+              thumbColor={highContrast ? '#000' : '#fff'}
+            />
+          </View>
         </View>
       </View>
     </View>
@@ -99,55 +124,147 @@ export default function TextToSpeechScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6fa', paddingHorizontal: 16, paddingTop: 40 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#071c6b', marginLeft: 16 },
-  messageInput: {
+  bg: {
+    flex: 1,
+    backgroundColor: '#f4f8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 22,
+  },
+  backBtn: {
+    position: 'absolute',
+    top: 38,
+    left: 18,
+    zIndex: 10,
+    backgroundColor: 'transparent',
+    padding: 5,
+    borderRadius: 20,
+  },
+  card: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    height: 120,
-    textAlignVertical: 'top',
+    width: '93%',
+    maxWidth: 400,
+    borderRadius: 32,
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    shadowColor: '#2871e6',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 13,
+    alignItems: 'center',
+    marginTop: 30,
+  },
+  headerCentered: {
+    alignItems: 'center',
+    marginBottom: 9,
+  },
+  headerIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#e8f1fb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#2871e6',
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  headerTitle: {
+    fontSize: 23,
+    fontWeight: 'bold',
+    color: '#2871e6',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  caption: {
+    fontSize: 15.5,
+    color: '#222b4a',
+    fontWeight: '500',
+    marginBottom: 21,
+    textAlign: 'center',
+  },
+  inputBox: {
+    width: '100%',
+    backgroundColor: '#f7fafd',
+    borderRadius: 15,
+    borderWidth: 1.7,
+    borderColor: '#cae1ff',
+    padding: 14,
+    marginBottom: 25,
+    elevation: 4,
+    shadowColor: '#2871e6',
+  },
+  input: {
+    width: '100%',
+    minHeight: 130,
     fontSize: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    color: '#222b4a',
+    padding: 10,
+    textAlignVertical: 'top',
+    backgroundColor: 'transparent',
+    marginBottom: 8,
   },
   controlRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 30,
+    width: '100%',
   },
   playBtn: {
-    backgroundColor: '#4caf50',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    backgroundColor: '#2871e6',
+    width: 56,
+    height: 56,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 20,
+    marginRight: 12,
+    elevation: 6,
   },
   stopBtn: {
-    backgroundColor: '#e63946',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    backgroundColor: '#e84848',
+    width: 56,
+    height: 56,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 12,
+    elevation: 6,
   },
   disabledBtn: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
-  settingsContainer: { flex: 1 },
-  settingsTitle: { fontSize: 18, fontWeight: 'bold', color: '#071c6b', marginBottom: 12 },
-  speakerText: { fontSize: 16, color: '#666', marginBottom: 20 },
+  settingsCard: {
+    width: '100%',
+    backgroundColor: '#f7fafd',
+    borderRadius: 18,
+    padding: 15,
+    shadowColor: '#2871e6',
+    elevation: 2,
+    marginTop: 3,
+  },
+  settingsHeader: {
+    fontSize: 16,
+    color: '#2871e6',
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  settingLabel: { fontSize: 16, color: '#071c6b' },
+  divider: {
+    height: 1,
+    borderColor: '#e1e7ed',
+    borderWidth: 0.5,
+    marginVertical: 6,
+  },
+  settingLabel: {
+    fontSize: 16,
+    color: '#222b4a',
+    fontWeight: '500',
+  },
 });

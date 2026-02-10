@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../../lib/supabase';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../../lib/supabase'; // adjust path if needed
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -16,115 +17,167 @@ export default function RegisterScreen() {
       return;
     }
     setLoading(true);
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name } }
     });
+
     setLoading(false);
+
     if (error) {
       Alert.alert('Registration Failed', error.message);
     } else {
       Alert.alert('Success', 'Check your email for confirmation!');
-      router.replace('/welcomevoice');
+      router.replace('/login');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Full Name"
-        placeholderTextColor="#0a1663"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#0a1663"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#0a1663"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create Account</Text>}
+    <View style={styles.bg}>
+      <TouchableOpacity
+        style={styles.backArrow}
+        onPress={() => router.replace('/login')}>
+        <Ionicons name="arrow-back" size={28} color="#31374b" />
       </TouchableOpacity>
-      <View style={styles.linkRow}>
-        <Text style={styles.linkText}>Already have an account? </Text>
-        <TouchableOpacity onPress={() => router.push('/login')}>
-          <Text style={[styles.linkText, styles.linkBold]}>Login</Text>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.label}></Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Full Name"
+          placeholderTextColor="#a1aec6"
+          value={name}
+          onChangeText={setName}
+        />
+        <Text style={styles.label}></Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#a1aec6"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <Text style={styles.label}></Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor="#a1aec6"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.createButtonText}>Sign Up</Text>
+          }
         </TouchableOpacity>
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => router.replace('/login')}>
+            <Text style={styles.loginLink}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
-// Use your existing styles
-
-
 const styles = StyleSheet.create({
-  container: {
+  bg: {
     flex: 1,
-    backgroundColor: '#f4f6fa',
-    alignItems: 'center',
+    backgroundColor: '#f7fbff',
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    alignItems: 'center',
+  },
+  backArrow: {
+    position: 'absolute',
+    top: 40,
+    left: 22,
+    zIndex: 2,
+  },
+  card: {
+    width: 340,
+    paddingVertical: 30,
+    paddingHorizontal: 22,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    shadowColor: '#d7dfea',
+    shadowOpacity: 0.17,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 24,
+    elevation: 6,
   },
   title: {
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: 'bold',
-    color: '#0a1663',
-    marginBottom: 32,
-    fontFamily: 'serif',
+    color: '#31374b',
+    marginBottom: 18,
+    fontFamily: Platform.OS === 'ios' ? 'HelveticaNeue-Bold' : 'sans-serif',
+  },
+  label: {
+    fontSize: 16,
+    color: '#31374b',
+    fontWeight: '600',
+    marginBottom: 7,
+    marginTop: 12,
   },
   input: {
     width: '100%',
-    fontSize: 18,
-    borderBottomWidth: 2,
-    borderBottomColor: '#0a1663',
-    marginBottom: 24,
-    paddingVertical: 8,
-    color: '#0a1663',
-    backgroundColor: 'transparent',
+    fontSize: 17,
+    borderRadius: 12,
+    backgroundColor: '#eef2f6',
+    marginBottom: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 15,
+    color: '#272f44',
+    borderWidth: 1.2,
+    borderColor: '#e8eaf0',
   },
-  button: {
+  createButton: {
     width: '100%',
-    backgroundColor: '#0a1663',
-    borderRadius: 8,
+    backgroundColor: '#2982f8',
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 17,
+    marginBottom: 7,
+    borderWidth: 0,
+    shadowColor: '#82b4ff',
+    shadowOpacity: 0.13,
+    shadowRadius: 10,
     elevation: 2,
   },
-  buttonText: {
+  createButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 1,
   },
-  linkRow: {
+  footerRow: {
     flexDirection: 'row',
-    marginTop: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 14,
   },
-  linkText: {
-    color: '#0a1663',
+  footerText: {
+    color: '#31374b',
     fontSize: 15,
   },
-  linkBold: {
+  loginLink: {
+    color: '#1573e8',
     fontWeight: 'bold',
     textDecorationLine: 'underline',
+    fontSize: 15,
   },
 });
+  

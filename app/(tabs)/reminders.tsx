@@ -1,9 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, FlatList, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../../lib/supabase';
+import { Alert, Button, FlatList, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+// Expo Notifications configuration
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
+async function requestNotificationPermissions() {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission needed', 'Enable notifications permissions to get reminder alarms.');
+  }
+  return status === 'granted';
+}
+
+async function scheduleNotification(title, desc, dateTime) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: title || 'Reminder Alarm',
+      body: desc || "It's time for your reminder!",
+      sound: 'default',
+    },
+    trigger: dateTime,
+  });
+}
 
 export default function RemindersScreen() {
   const router = useRouter();
@@ -13,153 +41,21 @@ export default function RemindersScreen() {
   const [desc, setDesc] = useState('');
   const [time, setTime] = useState(new Date());
   const [showIOSPicker, setShowIOSPicker] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState(null);
 
-  // Fetch reminders for the logged-in user only
   useEffect(() => {
-    const fetchReminders = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('time', { ascending: true });
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        setReminders(data || []);
-      }
-      setLoading(false);
-    };
-    fetchReminders();
+    requestNotificationPermissions();
   }, []);
 
-  // Android Date/Time Picker Handler
-  const showPicker = (currentMode: 'date' | 'time') => {
-    DateTimePickerAndroid.open({
-      value: time,
-      onChange: (event, selectedTime) => {
-        if (selectedTime) {
-          setTime(selectedTime);
-          if (currentMode === 'date') showPicker('time');
-        }
-      },
-      mode: currentMode,
-      is24Hour: true,
-    });
-  };
+  function handleEdit(item) {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setDesc(item.desc);
+    setTime(new Date(item.time));
+    setModalVisible(true);
+  }
 
-  // Add new reminder with validation
-  const addReminder = async () => {
-    if (!title.trim() || title.trim().length < 3) {
-      Alert.alert('Title required', 'Please enter a title (at least 3 characters).');
-      return;
-    }
-    if (title.length > 50) {
-      Alert.alert('Title too long', 'Title should not exceed 50 characters.');
-      return;
-    }
-    if (desc.length > 0 && desc.trim().length < 5) {
-      Alert.alert('Description too short', 'If you add a description, it should be at least 5 characters.');
-      return;
-    }
-    if (desc.length > 200) {
-      Alert.alert('Description too long', 'Description should not exceed 200 characters.');
-      return;
-    }
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-      const newReminder = {
-        user_id: user.id,
-        title: title.trim(),
-        desc: desc.trim(),
-        time: time.toISOString(),
-      };
-      const { data, error } = await supabase
-        .from('reminders')
-        .insert(newReminder)
-        .select()
-        .single();
-      if (error) throw error;
-      setReminders(prev => [...prev, data]);
-      setModalVisible(false);
-      setTitle('');
-      setDesc('');
-      setTime(new Date());
-      setShowIOSPicker(false);
-      Alert.alert('Success', 'Reminder added!');
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  // Update existing reminder
-  const updateReminder = async () => {
-    if (!editingId) return;
-    if (!title.trim() || title.trim().length < 3) {
-      Alert.alert('Title required', 'Please enter a title (at least 3 characters).');
-      return;
-    }
-    if (title.length > 50) {
-      Alert.alert('Title too long', 'Title should not exceed 50 characters.');
-      return;
-    }
-    if (desc.length > 0 && desc.trim().length < 5) {
-      Alert.alert('Description too short', 'If you add a description, it should be at least 5 characters.');
-      return;
-    }
-    if (desc.length > 200) {
-      Alert.alert('Description too long', 'Description should not exceed 200 characters.');
-      return;
-    }
-    try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({
-          title: title.trim(),
-          desc: desc.trim(),
-          time: time.toISOString(),
-        })
-        .eq('id', editingId)
-        .select()
-        .single();
-      if (error) throw error;
-      setReminders(reminders.map(r => (r.id === editingId ? data : r)));
-      setModalVisible(false);
-      setEditingId(null);
-      setTitle('');
-      setDesc('');
-      setTime(new Date());
-      setShowIOSPicker(false);
-      Alert.alert('Success', 'Reminder updated!');
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  // Delete reminder (actual delete)
-  const deleteReminder = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('reminders')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      setReminders(reminders.filter(r => r.id !== id));
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  // Delete confirmation dialog
-  const confirmDeleteReminder = (id: string) => {
+  function confirmDeleteReminder(id) {
     Alert.alert(
       "Delete Reminder",
       "Are you sure you want to delete this reminder?",
@@ -168,140 +64,156 @@ export default function RemindersScreen() {
         { text: "Delete", style: "destructive", onPress: () => deleteReminder(id) }
       ]
     );
-  };
+  }
 
-  // Handle edit button press
-  const handleEdit = (item: any) => {
-    setEditingId(item.id);
-    setTitle(item.title);
-    setDesc(item.desc);
-    setTime(new Date(item.time));
-    setModalVisible(true);
-  };
+  function deleteReminder(id) {
+    setReminders(reminders.filter(r => r.id !== id));
+  }
 
-  // Handle modal close (reset edit state)
-  const handleModalClose = () => {
+  async function addReminder() {
+    const newReminder = {
+      id: Date.now().toString(),
+      title,
+      desc,
+      time
+    };
+    setReminders([...reminders, newReminder]);
+    await scheduleNotification(title, desc, time);
+    handleModalClose();
+  }
+
+  async function updateReminder() {
+    setReminders(
+      reminders.map(r =>
+        r.id === editingId ? { ...r, title, desc, time } : r
+      )
+    );
+    await scheduleNotification(title, desc, time);
+    handleModalClose();
+  }
+
+  function handleModalClose() {
     setModalVisible(false);
-    setEditingId(null);
     setTitle('');
     setDesc('');
     setTime(new Date());
+    setEditingId(null);
     setShowIOSPicker(false);
-  };
+  }
+
+  function showDateTimePicker() {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: time,
+        mode: 'date',
+        is24Hour: true,
+        onChange: (event, selectedDate) => {
+          if (selectedDate) {
+            DateTimePickerAndroid.open({
+              value: selectedDate,
+              mode: 'time',
+              is24Hour: true,
+              onChange: (event2, selectedTime) => {
+                if (selectedTime) setTime(selectedTime);
+              },
+            });
+          }
+        },
+      });
+    } else {
+      setShowIOSPicker(true);
+    }
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Back Arrow */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
-          <Ionicons name="arrow-back" size={28} color="#0a1663" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reminders</Text>
-      </View>
-
-      {/* Add some space below the header */}
-      <View style={{ height: 32 }} />
-
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Text style={styles.addButtonText}>+ Add Reminder</Text>
-      </TouchableOpacity>
-
-      {/* Loading Spinner or Reminders List */}
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#0a1663" />
+    <View style={styles.rootBg}>
+      <View style={styles.containerCard}>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={() => router.push('/home')} style={{ paddingRight: 12 }}>
+              <Ionicons name="arrow-back" size={26} color="#2871e6" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Reminders</Text>
+          </View>
+          <TouchableOpacity style={styles.headerAddBtn} onPress={() => setModalVisible(true)}>
+            <Text style={styles.headerAddText}>Add Reminder</Text>
+          </TouchableOpacity>
         </View>
-      ) : (
+
         <FlatList
           data={reminders}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           ListEmptyComponent={<Text style={styles.emptyText}>No reminders yet.</Text>}
           renderItem={({ item }) => (
             <View style={styles.reminderItem}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.reminderTitle}>{item.title}</Text>
                 <Text style={styles.reminderDesc}>{item.desc}</Text>
-                <Text style={styles.reminderDate}>
-                  {new Date(item.time).toLocaleString()}
-                </Text>
+                <Text style={styles.reminderDate}>{new Date(item.time).toLocaleString()}</Text>
               </View>
-              {/* Action buttons row */}
               <View style={styles.actionRow}>
-                <TouchableOpacity 
-                  onPress={() => handleEdit(item)}
-                  style={styles.editButton}
-                >
-                  <Ionicons name="create" size={20} color="#0a1663" />
+                <TouchableOpacity style={styles.actionBtn} onPress={() => handleEdit(item)}>
+                  <Text style={styles.actionBtnText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => confirmDeleteReminder(item.id)}>
-                  <Text style={styles.deleteText}>Delete</Text>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => confirmDeleteReminder(item.id)}>
+                  <Text style={styles.actionBtnTextAlt}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
         />
-      )}
 
-      <Modal visible={modalVisible} animationType="slide" transparent={false}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>
-            {editingId ? 'Edit Reminder' : 'New Reminder'}
-          </Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Title"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={50}
-          />
-          <Text style={{ color: '#888', alignSelf: 'flex-end', marginBottom: 6 }}>
-            {title.length}/50
-          </Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Description"
-            value={desc}
-            onChangeText={setDesc}
-            multiline
-            maxLength={200}
-          />
-          <Text style={{ color: '#888', alignSelf: 'flex-end', marginBottom: 6 }}>
-            {desc.length}/200
-          </Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => {
-              if (Platform.OS === 'android') {
-                showPicker('date');
-              } else {
-                setShowIOSPicker(true);
-              }
-            }}
-          >
-            <Text style={styles.dateButtonText}>
-              {time.toLocaleDateString() + ' ' + time.toLocaleTimeString()}
+        <TouchableOpacity style={styles.addButtonBottom} onPress={() => setModalVisible(true)}>
+          <Text style={styles.addButtonBottomText}>Add Reminder</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal for add/edit */}
+      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {editingId ? 'Edit Reminder' : 'New Reminder'}
             </Text>
-          </TouchableOpacity>
-          {Platform.OS === 'ios' && showIOSPicker && (
-            <DateTimePicker
-              value={time}
-              mode="datetime"
-              display="default"
-              onChange={(event, selectedTime) => {
-                setShowIOSPicker(false);
-                if (selectedTime) setTime(selectedTime);
-              }}
+            <TextInput
+              style={styles.input}
+              placeholder="Title"
+              value={title}
+              onChangeText={setTitle}
+              maxLength={50}
             />
-          )}
-          <View style={styles.buttonRow}>
-            <Button title="Cancel" onPress={handleModalClose} />
-            <Button 
-              title={editingId ? 'Update' : 'Save'} 
-              onPress={editingId ? updateReminder : addReminder} 
+            <TextInput
+              style={styles.input}
+              placeholder="Description"
+              value={desc}
+              onChangeText={setDesc}
+              multiline
+              maxLength={200}
             />
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={showDateTimePicker}
+            >
+              <Text style={styles.dateButtonText}>
+                {time.toLocaleDateString() + ' ' + time.toLocaleTimeString()}
+              </Text>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' && showIOSPicker && (
+              <DateTimePicker
+                value={time}
+                mode="datetime"
+                display="default"
+                onChange={(event, selectedTime) => {
+                  setShowIOSPicker(false);
+                  if (selectedTime) setTime(selectedTime);
+                }}
+              />
+            )}
+            <View style={styles.buttonRow}>
+              <Button title="Cancel" onPress={handleModalClose} />
+              <Button title={editingId ? 'Update' : 'Save'} onPress={editingId ? updateReminder : addReminder} />
+            </View>
           </View>
         </View>
       </Modal>
@@ -309,124 +221,185 @@ export default function RemindersScreen() {
   );
 }
 
+// --- All styles used above ---
 const styles = StyleSheet.create({
-  container: {
+  rootBg: {
     flex: 1,
+    backgroundColor: '#f4f6fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  containerCard: {
+    width: '94%',
+    backgroundColor: '#fff',
+    borderRadius: 22,
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    shadowColor: '#2871e6',
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.09,
+    shadowRadius: 13,
+    elevation: 12,
+    marginVertical: 12,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 0,
-  },
-  backButton: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 2,
-    elevation: 2,
-    marginRight: 8,
+    justifyContent: 'space-between',
+    marginBottom: 26,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#0a1663',
-    marginLeft: 2,
+    color: '#222b4a',
+    letterSpacing: 0.2,
   },
-  addButton: {
-    backgroundColor: '#0a1663',
-    padding: 15,
+  headerAddBtn: {
+    paddingHorizontal: 19,
+    paddingVertical: 6,
     borderRadius: 12,
-    marginBottom: 24,
-    marginTop: 8,
-    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#2871e6',
+    backgroundColor: '#fff',
   },
-  addButtonText: {
-    color: 'white',
-    fontSize: 18,
+  headerAddText: {
+    color: '#2871e6',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   reminderItem: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1.7,
+    borderColor: '#2871e6',
+    marginTop: 0,
+    marginBottom: 17,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
+    alignItems: 'flex-start',
+    padding: 15,
+    shadowColor: '#2871e6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   reminderTitle: {
-    fontSize: 20,
+    color: '#1a306d',
+    fontSize: 16.5,
     fontWeight: 'bold',
-    color: '#0a1663',
     marginBottom: 2,
   },
   reminderDesc: {
-    color: '#666',
-    marginVertical: 2,
-    fontSize: 15,
+    color: '#606780',
+    fontSize: 13.5,
+    marginBottom: 1,
   },
   reminderDate: {
-    color: '#888',
-    fontSize: 13,
-    marginTop: 2,
+    color: '#90a2c8',
+    fontSize: 13.5,
+    marginBottom: 0,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    alignSelf: 'flex-start',
+    marginLeft: 15,
+    marginTop: 8,
   },
-  editButton: {
-    marginRight: 16,
-    padding: 4,
+  actionBtn: {
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: '#2871e6',
+    backgroundColor: '#fff',
+    paddingHorizontal: 17,
+    paddingVertical: 5,
+    marginRight: 7,
   },
-  deleteText: {
-    color: 'red',
+  actionBtnText: {
+    color: '#2871e6',
+    fontWeight: 'bold',
+    fontSize: 13.5,
+  },
+  actionBtnTextAlt: {
+    color: '#2871e6',
+    fontWeight: 'bold',
+    fontSize: 13.5,
+  },
+  addButtonBottom: {
+    marginTop: 8,
+    alignSelf: 'flex-end',
+    backgroundColor: '#2871e6',
+    borderRadius: 13,
+    paddingHorizontal: 28,
+    paddingVertical: 11,
+  },
+  addButtonBottomText: {
+    color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+    letterSpacing: 0.5,
   },
   emptyText: {
-    color: '#888',
-    fontSize: 16,
+    color: '#adb3c9',
+    fontSize: 15,
     textAlign: 'center',
-    marginTop: 40,
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: 'white',
-    justifyContent: 'center',
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#222b4a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.11,
+    shadowRadius: 12,
+    elevation: 13,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#0a1663',
-    marginBottom: 20,
+    color: '#2871e6',
+    marginBottom: 21,
+    textAlign: 'center',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 5,
-    fontSize: 16,
+    borderWidth: 1.5,
+    borderColor: '#2871e6',
+    padding: 13,
+    borderRadius: 10,
+    marginBottom: 9,
+    fontSize: 15,
+    backgroundColor: '#f7faff',
   },
   dateButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
+    borderWidth: 1.5,
+    borderColor: '#2871e6',
+    padding: 13,
+    borderRadius: 10,
+    marginBottom: 19,
+    backgroundColor: '#f7faff',
+    alignItems: 'center',
   },
   dateButtonText: {
     fontSize: 16,
-    color: '#0a1663',
+    color: '#2871e6',
+    fontWeight: 'bold',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 16,
   },
 });
+
+// Install these modules in your project:
+// npx expo install expo-notifications
+// npx expo install @react-native-community/datetimepicker

@@ -6,8 +6,13 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PermissionModal from '../../components/PermissionModal';
+
+const AVATAR_URL = "https://randomuser.me/api/portraits/men/32.jpg";
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const MIC_SIZE = 130;
 
 const permissionOrder = ['location', 'contacts', 'microphone', 'notifications'] as const;
 
@@ -24,7 +29,6 @@ export default function WelcomeVoiceScreen() {
         router.push('/listening');
         return;
       }
-
       for (let i = 0; i < permissionOrder.length; i++) {
         const type = permissionOrder[i];
         const status = await AsyncStorage.getItem(`perm_${type}`);
@@ -46,24 +50,20 @@ export default function WelcomeVoiceScreen() {
       if (type === 'location') {
         const { status: locStatus, canAskAgain } = await Location.requestForegroundPermissionsAsync();
         status = locStatus;
-        if (!canAskAgain) permanentDenials.add(type);
-      } 
-      else if (type === 'contacts') {
+        if (!canAskAgain) setPermanentDenials(prev => new Set(prev).add(type));
+      } else if (type === 'contacts') {
         const { status: contactStatus, canAskAgain } = await Contacts.requestPermissionsAsync();
         status = contactStatus;
-        if (!canAskAgain) permanentDenials.add(type);
-      } 
-      else if (type === 'microphone') {
+        if (!canAskAgain) setPermanentDenials(prev => new Set(prev).add(type));
+      } else if (type === 'microphone') {
         const { status: micStatus, canAskAgain } = await Audio.requestPermissionsAsync();
         status = micStatus;
-        if (!canAskAgain) permanentDenials.add(type);
-      } 
-      else if (type === 'notifications') {
+        if (!canAskAgain) setPermanentDenials(prev => new Set(prev).add(type));
+      } else if (type === 'notifications') {
         const { status: notifStatus, canAskAgain } = await Notifications.requestPermissionsAsync();
         status = notifStatus;
-        if (!canAskAgain) permanentDenials.add(type);
+        if (!canAskAgain) setPermanentDenials(prev => new Set(prev).add(type));
       }
-      
       await AsyncStorage.setItem(`perm_${type}`, status || 'undetermined');
       return status;
     } catch (error) {
@@ -94,7 +94,6 @@ export default function WelcomeVoiceScreen() {
     if (permStep === null) return;
     const type = permissionOrder[permStep];
     await AsyncStorage.setItem(`perm_${type}`, 'denied');
-    
     if (permStep < permissionOrder.length - 1) {
       setPermStep(permStep + 1);
     } else {
@@ -110,18 +109,25 @@ export default function WelcomeVoiceScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome!</Text>
-      <View style={styles.micCircle}>
-        <Ionicons name="mic" size={80} color="#fff" />
+      {/* Blue half-screen top background */}
+      <View style={styles.topBlue}>
+        <Ionicons name="star-outline" size={22} color="#fff" style={styles.starIcon} />
+        <View style={styles.micRing}>
+          <Ionicons name="mic" size={92} color="#fff" />
+        </View>
       </View>
-      <Text style={styles.subtitle}>How can I assist you{`\n`}today?</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setPermStep(0)}
-      >
-        <Text style={styles.buttonText}>TAP TO START</Text>
+      {/* Speech bubble card */}
+      <View style={styles.speechCard}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 1 }}>
+          <Image source={{ uri: AVATAR_URL }} style={styles.avatar} />
+          <Text style={styles.listeningText}>Listening...</Text>
+        </View>
+        <Text style={styles.speechText}>What's on my calendar for tomorrow?</Text>
+      </View>
+      {/* Tap to Start button */}
+      <TouchableOpacity style={styles.startBtn} onPress={() => setPermStep(0)}>
+        <Text style={styles.startText}>TAP TO START</Text>
       </TouchableOpacity>
-
       {permStep !== null && (
         <PermissionModal
           visible={true}
@@ -139,52 +145,92 @@ export default function WelcomeVoiceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f6fa',
+    backgroundColor: '#fafdff',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  topBlue: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.5,
+    backgroundColor: '#2da7f8',
+    borderBottomLeftRadius: 44,
+    borderBottomRightRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    position: 'relative',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0a1663',
-    marginBottom: 40,
-    fontFamily: 'serif',
-    textAlign: 'center',
+  starIcon: {
+    position: 'absolute',
+    top: 42,
+    right: 22,
+    zIndex: 10,
+    opacity: 0.98,
   },
-  micCircle: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#0a1663',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 36,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#0a1663',
-    marginBottom: 60,
-    textAlign: 'center',
-    fontFamily: 'serif',
-    fontWeight: '500',
-  },
-  button: {
-    borderWidth: 1,
-    borderColor: '#0a1663',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    alignItems: 'center',
+  micRing: {
     marginTop: 16,
-    backgroundColor: '#f4f6fa',
+    width: MIC_SIZE,
+    height: MIC_SIZE,
+    borderRadius: MIC_SIZE / 2,
+    backgroundColor: '#2da7f8',
+    borderWidth: 9,
+    borderColor: '#79d3ff44',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1985ea',
+    shadowOpacity: 0.15,
+    shadowRadius: 11,
+    elevation: 9,
   },
-  buttonText: {
-    color: '#0a1663',
-    fontSize: 18,
+  speechCard: {
+    marginTop: -51,
+    marginBottom: 36,
+    backgroundColor: '#fff',
+    width: SCREEN_WIDTH * 0.85,
+    borderRadius: 14,
+    paddingVertical: 21,
+    paddingHorizontal: 16,
+    shadowColor: '#93cdff',
+    shadowOpacity: 0.13,
+    shadowRadius: 11,
+    elevation: 7,
+    alignSelf: 'center',
+  },
+  avatar: {
+    width: 29,
+    height: 29,
+    borderRadius: 14.5,
+    marginRight: 9,
+  },
+  listeningText: {
     fontWeight: 'bold',
-    letterSpacing: 1,
-    fontFamily: 'serif',
+    color: '#2da7f8',
+    fontSize: 16,
+    marginBottom: 1,
+  },
+  speechText: {
+    color: '#232750',
+    fontSize: 17,
+    marginLeft: 2,
+    marginTop: 2,
+  },
+  startBtn: {
+    backgroundColor: '#2da7f8',
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 54,
+    paddingVertical: 14,
+    alignSelf: 'center',
+    marginTop: 14,
+    shadowColor: '#0099ff',
+    shadowOpacity: 0.14,
+    shadowRadius: 7,
+    elevation: 7,
+  },
+  startText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 17,
+    letterSpacing: 0.7,
   },
 });
-
